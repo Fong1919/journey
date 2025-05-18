@@ -68,7 +68,7 @@
 <body>
     <div class="container">
         <h2>旅游管理班十周年聚会参加意向匿名调查</h2>
-        
+
         <div class="options">
             <label>
                 <input type="radio" name="vote" value="参加" required>
@@ -84,17 +84,16 @@
         <button onclick="showResults()">查看实时结果</button>
 
         <canvas id="resultChart"></canvas>
-        
+
         <div class="wechat-tips">
-            ※ 温馨提示：投票结果仅存储在您的手机浏览器中，清空缓存会重置数据
         </div>
     </div>
 
     <script>
         // 微信环境初始化
         const isWeChat = /MicroMessenger/i.test(navigator.userAgent);
-        
-        // 初始化投票数据
+
+        // 初始化投票数据和投票状态
         if (!localStorage.getItem('votes')) {
             localStorage.setItem('votes', JSON.stringify({
                 "参加": 0,
@@ -102,17 +101,28 @@
             }));
         }
 
+        if (!localStorage.getItem('hasVoted')) {
+            localStorage.setItem('hasVoted', 'false');
+        }
+
         // 提交投票
         function submitVote() {
             const selected = document.querySelector('input[name="vote"]:checked');
+
+            if (localStorage.getItem('hasVoted') === 'true') {
+                showMessage('您已投过票，不能重复投票');
+                return;
+            }
+
             if (!selected) {
                 showMessage('请先选择投票选项');
                 return;
             }
-            
+
             const votes = JSON.parse(localStorage.getItem('votes'));
             votes[selected.value]++;
             localStorage.setItem('votes', JSON.stringify(votes));
+            localStorage.setItem('hasVoted', 'true'); // 设置为已投票
             showMessage('投票成功！感谢参与');
         }
 
@@ -120,7 +130,10 @@
         function showResults() {
             const votes = JSON.parse(localStorage.getItem('votes'));
             const ctx = document.getElementById('resultChart').getContext('2d');
-            
+
+            const hasVoted = localStorage.getItem('hasVoted') === 'true';
+            const votedMsg = hasVoted ? '您已投票' : '您尚未投票';
+
             new Chart(ctx, {
                 type: 'doughnut',
                 data: {
@@ -136,6 +149,10 @@
                     plugins: {
                         legend: {
                             position: 'bottom'
+                        },
+                        title: {
+                            display: true,
+                            text: votedMsg
                         }
                     }
                 }
@@ -144,7 +161,7 @@
 
         // 微信专用提示方法
         function showMessage(msg) {
-            if(isWeChat) {
+            if (isWeChat) {
                 alert(msg); // 微信内置浏览器使用系统弹窗
             } else {
                 const div = document.createElement('div');
@@ -159,16 +176,17 @@
 
     <!-- 微信缓存处理 -->
     <script>
-        // 强制刷新机制
-        if(isWeChat && performance.navigation.type === 1) {
-            localStorage.removeItem('votes');
-            location.reload(true);
-        }
-        
         // 防止微信缓存
-        document.addEventListener('WeixinJSBridgeReady', function() {
+        document.addEventListener('WeixinJSBridgeReady', function () {
             WeixinJSBridge.call('hideToolbar');
         });
+
+        // 可选：如果想在强制刷新时不重置投票记录，请注释掉以下代码
+        // if (isWeChat && performance.navigation.type === PerformanceNavigation.TYPE_RELOAD) {
+        //     localStorage.removeItem('votes');
+        //     localStorage.removeItem('hasVoted');
+        //     location.reload(true);
+        // }
     </script>
 </body>
 </html>
